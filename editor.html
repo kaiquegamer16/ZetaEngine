@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zeta Engine - Live Editor</title>
+    <title>Zeta Engine - Final Stable</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
@@ -17,6 +17,7 @@
             display: flex; flex-direction: column;
         }
 
+        /* TOOLBAR */
         #toolbar {
             height: 50px; background: #111; border-bottom: 1px solid #333;
             display: flex; align-items: center; justify-content: space-between;
@@ -32,10 +33,12 @@
         .tool-btn:hover { background: rgba(0, 243, 255, 0.1); color: #00f3ff; border-color: #00f3ff; }
         .save-btn { font-size: 0.8rem; width: auto; padding: 0 15px; gap: 5px; font-family: 'Orbitron'; }
 
+        /* WORKSPACE */
         #workspace { flex: 1; display: flex; position: relative; overflow: hidden; }
         #viewport { flex: 1; background-color: #1a1a1a; position: relative; overflow: hidden; }
         canvas { display: block; width: 100%; height: 100%; }
 
+        /* EDITOR ACE */
         #code-editor-container {
             flex: 1; display: none; flex-direction: column;
             background: #141414; position: relative; z-index: 30;
@@ -46,6 +49,7 @@
             display: flex; align-items: center; justify-content: space-between; padding: 0 10px;
         }
 
+        /* SIDEBAR */
         #sidebar {
             width: 260px; background: #0f0f12; border-left: 1px solid #333;
             display: flex; flex-direction: column; z-index: 20;
@@ -57,22 +61,28 @@
         }
         .panel-content { padding: 10px; flex: 1; overflow-y: auto; font-family: 'Fira Code', monospace; font-size: 0.85rem;}
 
+        /* ARVORE (Fixada) */
         .tree-node { margin-left: 10px; }
-        .tree-item {
+        .tree-row {
             display: flex; align-items: center; padding: 4px 0;
             cursor: pointer; color: #aaa; transition: 0.2s;
         }
-        .tree-item:hover { color: #fff; background: rgba(255,255,255,0.05); }
-        .arrow {
-            display: inline-block; width: 20px; text-align: center; font-size: 10px;
-            cursor: pointer; transition: transform 0.2s; color: #666;
+        .tree-row:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        
+        .arrow-box {
+            width: 20px; height: 20px; display: flex; justify-content: center; align-items: center;
+            cursor: pointer; margin-right: 2px;
         }
+        .arrow { font-size: 10px; transition: transform 0.2s; color: #666; }
+        .arrow-box:hover .arrow { color: #fff; }
         .arrow.open { transform: rotate(90deg); color: #00f3ff; }
-        .arrow.hidden { visibility: hidden; }
+        
+        .tree-label { display: flex; align-items: center; flex: 1; }
         .icon { margin-right: 6px; }
         .folder-icon { color: #dcb67a; } .js-icon { color: #f7df1e; }
-        .tree-children { display: none; border-left: 1px solid #333; margin-left: 9px; }
+        .tree-children { display: none; border-left: 1px solid #333; margin-left: 10px; }
 
+        /* MODAL */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); z-index: 100; display: none;
@@ -91,6 +101,7 @@
         .modal-input { width: 100%; background: #000; border: 1px solid #444; color: #fff; padding: 8px; margin-bottom: 10px; }
         .btn-action { background: #00f3ff; color: #000; border: none; padding: 6px 12px; cursor: pointer; font-weight: bold; }
 
+        /* CONSOLE */
         #console-panel {
             position: absolute; bottom: 0; left: 0; width: 100%; height: 150px;
             background: rgba(0, 0, 0, 0.95); border-top: 1px solid #00f3ff;
@@ -183,9 +194,8 @@
 
         // --- GLOBAIS ---
         let scene, camera, renderer, controls, clock;
-        let selectedObject3D = null;
         let isPlaying = false;
-        let activeScripts = []; // { scope: {}, func: Function }
+        let activeScripts = [];
         let editor;
         let activeScriptId = null;
 
@@ -194,31 +204,33 @@
         let selectedAsset = null;
         let creatingType = null;
 
+        // --- SCRIPT PADRÃO (SPAWNER) ---
+        // Nota: Objetos criados aqui aparecem no Editor porque rodamos a parte "init" ao carregar
         const SPAWNER_SCRIPT = `
-// 1. Executa na inicialização (Editor e Play)
+// 1. INICIALIZAÇÃO (Roda ao carregar o editor e ao dar Play)
 if (!this.initialized) {
     this.initialized = true;
-    console.log("Inicializando objetos do script...");
+    console.log("Inicializando Script: " + this.name);
 
-    // Cria cubo
+    // Criar Cubo
     const geo = new THREE.BoxGeometry(1, 1, 1);
     const mat = new THREE.MeshStandardMaterial({ color: 0x00f3ff, roughness: 0.2 });
     this.cube = new THREE.Mesh(geo, mat);
     
-    // Borda Neon
+    // Borda Visual
     const edges = new THREE.EdgesGeometry(geo);
     this.cube.add(new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff })));
     
     scene.add(this.cube);
 
-    // Luz
+    // Criar Luz
     const light = new THREE.DirectionalLight(0xffffff, 2);
     light.position.set(2, 5, 2);
     scene.add(light);
 }
 
-// 2. Executa APENAS no Play Mode (Animação)
-if (this.cube && isPlaying) {
+// 2. LOOP DE JOGO (Só roda quando isPlaying == true)
+if (window.isPlaying && this.cube) {
     this.cube.rotation.x += delta;
     this.cube.rotation.y += delta * 0.5;
 }
@@ -239,7 +251,7 @@ if (this.cube && isPlaying) {
             // EXPOR GLOBAIS
             window.scene = scene;
             window.THREE = THREE;
-            window.isPlaying = false; // Scripts podem ler essa variável
+            window.isPlaying = false; 
 
             const aspect = vp.clientWidth / vp.clientHeight;
             camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
@@ -253,23 +265,8 @@ if (this.cube && isPlaying) {
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
 
-            const raycaster = new THREE.Raycaster();
-            const mouse = new THREE.Vector2();
-
-            vp.addEventListener('mousedown', (e) => {
-                if (isPlaying) return;
-                const rect = renderer.domElement.getBoundingClientRect();
-                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-                
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects(scene.children);
-                if (intersects.length > 0) selectObject(intersects[0].object);
-                else deselectObject();
-            });
-
             window.addEventListener('resize', onWindowResize);
-            log("Zeta Engine Pronta.", "info");
+            log("Zeta Engine v1.0 Ready.", "info");
         }
 
         function initEditor() {
@@ -278,10 +275,72 @@ if (this.cube && isPlaying) {
             editor.session.setMode("ace/mode/javascript");
         }
 
-        // --- SISTEMA CENTRAL ---
+        // --- SISTEMA DE ARQUIVOS (ASSETS) ---
+        // Correção da árvore: Clicar na seta != Clicar no nome
+        function renderTree() {
+            const container = document.getElementById('asset-tree');
+            container.innerHTML = '';
+            
+            function build(items, parent) {
+                items.forEach(item => {
+                    // Container do Node
+                    const div = document.createElement('div');
+                    div.className = 'tree-node';
+                    
+                    // Linha visual
+                    const row = document.createElement('div');
+                    row.className = 'tree-row';
 
+                    // 1. Seta (Arrow Box)
+                    const arrowBox = document.createElement('div');
+                    arrowBox.className = 'arrow-box';
+                    const arrow = document.createElement('span');
+                    arrow.className = 'arrow';
+                    arrow.innerText = '▶';
+                    
+                    if (item.type !== 'folder') arrow.style.visibility = 'hidden';
+                    arrowBox.appendChild(arrow);
+
+                    // 2. Label (Icone + Texto)
+                    const label = document.createElement('div');
+                    label.className = 'tree-label';
+                    label.innerHTML = `<span class="icon ${item.type==='folder'?'folder-icon':'js-icon'}">${item.type==='folder'?'📁':'📜'}</span> <span>${item.name}</span>`;
+
+                    row.appendChild(arrowBox);
+                    row.appendChild(label);
+                    div.appendChild(row);
+
+                    // 3. Container de Filhos
+                    let childrenContainer = null;
+                    if(item.type === 'folder') {
+                        childrenContainer = document.createElement('div');
+                        childrenContainer.className = 'tree-children';
+                        build(item.children, childrenContainer);
+                        
+                        // Evento Seta: Abrir/Fechar Pasta
+                        arrowBox.onclick = (e) => {
+                            e.stopPropagation();
+                            arrow.classList.toggle('open');
+                            childrenContainer.style.display = childrenContainer.style.display === 'block' ? 'none' : 'block';
+                        };
+                    }
+
+                    // Evento Label: Abrir Opções
+                    label.onclick = (e) => {
+                        e.stopPropagation();
+                        openModalOption(item);
+                    };
+
+                    if(childrenContainer) div.appendChild(childrenContainer);
+                    parent.appendChild(div);
+                });
+            }
+            build(fileSystem, container);
+        }
+
+        // --- CORE LOGIC ---
         window.loadProject = function(isReload = false) {
-            // Limpa cena (exceto coisas nativas se houver, mas aqui limpamos tudo)
+            // 1. Limpar Cena completamente
             while(scene.children.length > 0){ scene.remove(scene.children[0]); }
             activeScripts = [];
 
@@ -292,19 +351,18 @@ if (this.cube && isPlaying) {
                         projectData = JSON.parse(data);
                         fileSystem = projectData.assets || [];
                     } else {
-                        // PADRÃO
+                        // DEFAULT
                         fileSystem = [{ id: 1, name: "Assets", type: "folder", children: [
-                            { id: 2, name: "StartScene.js", type: "js", content: SPAWNER_SCRIPT }
+                            { id: 2, name: "Spawner.js", type: "js", content: SPAWNER_SCRIPT }
                         ]}];
-                        projectData.sceneObjects = [{ name: 'System_StartScene', attachedScriptId: 2, isManager: true }];
+                        projectData.sceneObjects = [{ name: 'System_Spawner', attachedScriptId: 2, isManager: true }];
                     }
                 } catch (e) { localStorage.removeItem('zetaProjectData'); }
             }
 
-            // 1. Recria os Managers e EXECUTAR OS SCRIPTS IMEDIATAMENTE (Modo Editor)
+            // 2. Carregar Managers e EXECUTAR SCRIPTS (Setup Inicial)
             projectData.sceneObjects.forEach(d => {
                 if(d.isManager) {
-                    // Esfera amarela visual para o editor
                     const geo = new THREE.SphereGeometry(0.2);
                     const mat = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true });
                     const manager = new THREE.Mesh(geo, mat);
@@ -313,42 +371,42 @@ if (this.cube && isPlaying) {
                     manager.userData.attachedScriptId = d.attachedScriptId;
                     scene.add(manager);
 
-                    // EXECUTA O SCRIPT AGORA (Para criar os objetos na cena)
-                    compileAndRunScript(d.attachedScriptId, manager);
+                    // Roda o script imediatamente para que o objeto apareça no editor!
+                    compileAndRegisterScript(d.attachedScriptId, manager);
                 }
             });
 
             renderTree();
         }
 
-        function compileAndRunScript(scriptId, managerObj) {
+        function compileAndRegisterScript(scriptId, managerObj) {
             const script = findItemById(fileSystem, scriptId);
             if (script && script.content) {
                 try {
                     const func = new Function('time', 'delta', script.content);
-                    const scriptScope = { initialized: false }; // Escopo persistente
+                    const scriptScope = { initialized: false, name: script.name };
                     
                     // Adiciona à lista de updates
                     activeScripts.push({ scope: scriptScope, func: func, manager: managerObj });
                     
-                    // Executa UMA VEZ para inicializar (criar meshes)
+                    // Executa a primeira vez (Setup)
+                    // Aqui 'this.initialized' será false, então ele cria os cubos
                     func.call(scriptScope, 0, 0);
                     
-                } catch (e) { log("Erro Script: " + e.message, "warn"); }
+                } catch (e) { log("Erro no Script " + script.name + ": " + e.message, "warn"); }
             }
         }
 
         window.startPlay = function() {
             if(isPlaying) return;
-            window.isPlaying = true; // Scripts usam isso para saber se devem animar
+            window.isPlaying = true; 
 
-            // Esconde os ícones amarelos dos managers
+            // Esconde managers
             scene.children.forEach(c => { if(c.userData.isManager) c.visible = false; });
 
             document.getElementById('btn-play').style.display = 'none';
             document.getElementById('btn-stop').style.display = 'flex';
             document.getElementById('viewport').style.border = "2px solid #00f3ff";
-            deselectObject();
             log("Play Mode.", "info");
         };
 
@@ -356,78 +414,35 @@ if (this.cube && isPlaying) {
             if(!isPlaying) return;
             window.isPlaying = false;
 
-            // Recarrega o projeto para resetar posições e estados dos objetos
-            // Isso garante que voltamos exatamente para como estava no editor
+            // Recarrega projeto = Reseta Cena
             window.loadProject(true); 
 
             document.getElementById('btn-play').style.display = 'flex';
             document.getElementById('btn-stop').style.display = 'none';
             document.getElementById('viewport').style.border = "none";
-            log("Editor Mode.", "warn");
+            log("Stop. Scene Reset.", "warn");
         };
 
-        // --- ASSETS & UI ---
-        window.saveProject = function() {
-            // Salva apenas os Managers. Não salvamos os cubos criados dinamicamente.
-            projectData.sceneObjects = [];
-            scene.children.forEach(child => {
-                if (child.userData.isManager) {
-                    projectData.sceneObjects.push({
-                        name: child.name, attachedScriptId: child.userData.attachedScriptId, isManager: true
-                    });
-                }
-            });
-            projectData.assets = fileSystem;
-            localStorage.setItem('zetaProjectData', JSON.stringify(projectData));
-            log("Salvo com sucesso.", "info");
-        };
-
-        window.toggleConsole = () => document.getElementById('console-panel').classList.toggle('open');
-        window.closeModal = () => document.getElementById('modal-options').style.display = 'none';
-        window.resetModal = () => { document.getElementById('input-area').style.display='none'; document.getElementById('default-actions').style.display='flex'; };
-
-        function renderTree() {
-            const container = document.getElementById('asset-tree');
-            container.innerHTML = '';
-            
-            function build(items, parent) {
-                items.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'tree-node';
-                    const row = document.createElement('div');
-                    row.className = 'tree-item';
-                    
-                    const arrow = document.createElement('span');
-                    arrow.className = 'arrow';
-                    if(item.type === 'folder') arrow.innerText = '▶';
-                    else { arrow.innerText = '▶'; arrow.classList.add('hidden'); }
-
-                    const contentSpan = document.createElement('span');
-                    contentSpan.innerHTML = `<span class="icon ${item.type==='folder'?'folder-icon':'js-icon'}">${item.type==='folder'?'📁':'📜'}</span> <span>${item.name}</span>`;
-                    
-                    row.appendChild(arrow); row.appendChild(contentSpan);
-                    
-                    let childrenDiv = null;
-                    if(item.type === 'folder') {
-                        childrenDiv = document.createElement('div');
-                        childrenDiv.className = 'tree-children';
-                        build(item.children, childrenDiv);
-                        arrow.onclick = (e) => { e.stopPropagation(); arrow.classList.toggle('open'); childrenDiv.style.display = childrenDiv.style.display==='block'?'none':'block'; };
-                    }
-                    contentSpan.onclick = (e) => { e.stopPropagation(); openModalOption(item); };
-                    
-                    div.appendChild(row); if(childrenDiv) div.appendChild(childrenDiv); parent.appendChild(div);
-                });
-            }
-            build(fileSystem, container);
+        // --- MODAL & ASSETS LOGIC ---
+        function findItemById(list, id) {
+            for(let i of list) { if(i.id === id) return i; if(i.children) { const f = findItemById(i.children, id); if(f) return f; } } return null;
+        }
+        function deleteFromFolder(list, id) {
+            const idx = list.findIndex(i => i.id === id); if(idx > -1) { list.splice(idx,1); return true; }
+            for(let i of list) if(i.children && deleteFromFolder(i.children, id)) return true; return false;
         }
 
         function openModalOption(item) {
             selectedAsset = item;
             document.getElementById('modal-title').innerText = item.name;
             document.getElementById('modal-options').style.display = 'flex';
-            document.getElementById('ctx-folder').style.display = item.type==='folder'?'block':'none';
-            document.getElementById('ctx-script').style.display = item.type==='js'?'block':'none';
+            
+            const isFolder = item.type === 'folder';
+            const isJs = item.type === 'js';
+
+            document.getElementById('ctx-folder').style.display = isFolder ? 'block' : 'none';
+            document.getElementById('ctx-script').style.display = isJs ? 'block' : 'none';
+            
             document.getElementById('input-area').style.display='none';
             document.getElementById('default-actions').style.display='flex';
         }
@@ -446,12 +461,14 @@ if (this.cube && isPlaying) {
             const name = document.getElementById('new-item-name').value.trim();
             if(!name) return;
             const finalName = creatingType === 'script' ? name + '.js' : name;
+            
             const newItem = {
                 id: Date.now(), name: finalName,
                 type: creatingType === 'script' ? 'js' : 'folder',
                 content: creatingType === 'script' ? '// Novo Script' : null,
                 children: creatingType === 'folder' ? [] : null
             };
+            
             if(selectedAsset.type === 'folder') selectedAsset.children.push(newItem);
             renderTree();
             window.closeModal();
@@ -459,7 +476,12 @@ if (this.cube && isPlaying) {
         };
 
         window.deleteItem = () => {
-            if(confirm("Deletar?")) { deleteFromFolder(fileSystem, selectedAsset.id); renderTree(); window.closeModal(); window.saveProject(); }
+            if(confirm("Deletar item?")) { 
+                deleteFromFolder(fileSystem, selectedAsset.id); 
+                renderTree(); 
+                window.closeModal(); 
+                window.saveProject(); 
+            }
         };
 
         window.openScriptEditor = () => {
@@ -480,7 +502,7 @@ if (this.cube && isPlaying) {
             document.getElementById('code-editor-container').style.display = 'none';
             onWindowResize();
             window.saveProject();
-            // Recarrega para ver as mudanças do código na hora
+            // Recarrega para aplicar mudanças imediatamente
             window.loadProject(true);
         };
 
@@ -488,40 +510,42 @@ if (this.cube && isPlaying) {
             const managerName = "System_" + selectedAsset.name.replace('.js', '');
             if(scene.children.find(c => c.name === managerName)) { alert("Já existe!"); return; }
 
+            // Cria o registro no projectData (será salvo depois)
+            const managerData = {
+                name: managerName, attachedScriptId: selectedAsset.id, isManager: true
+            };
+            projectData.sceneObjects.push(managerData);
+
+            // Adiciona visualmente e logicamente agora
             const geo = new THREE.SphereGeometry(0.2);
             const mat = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true });
             const manager = new THREE.Mesh(geo, mat);
             manager.name = managerName;
             manager.userData.isManager = true;
             manager.userData.attachedScriptId = selectedAsset.id;
-            
             scene.add(manager);
-            compileAndRunScript(selectedAsset.id, manager); // Roda imediatamente no editor
 
-            log(`Aplicado: ${selectedAsset.name}`, "info");
+            compileAndRegisterScript(selectedAsset.id, manager);
+
+            log(`Script Aplicado: ${selectedAsset.name}`, "info");
             window.closeModal();
             window.saveProject();
         };
 
-        // Helpers
-        function findItemById(list, id) {
-            for(let i of list) { if(i.id === id) return i; if(i.children) { const f = findItemById(i.children, id); if(f) return f; } } return null;
-        }
-        function deleteFromFolder(list, id) {
-            const idx = list.findIndex(i => i.id === id); if(idx > -1) { list.splice(idx,1); return true; }
-            for(let i of list) if(i.children && deleteFromFolder(i.children, id)) return true; return false;
-        }
-        function selectObject(obj) {
-            if(obj.userData.isManager) {
-                if(selectedObject3D) selectedObject3D.material.color.setHex(0xffff00);
-                selectedObject3D = obj;
-                selectedObject3D.material.color.setHex(0xffaa00);
-            }
-        }
-        function deselectObject() {
-            if(selectedObject3D && selectedObject3D.userData.isManager) selectedObject3D.material.color.setHex(0xffff00);
-            selectedObject3D = null;
-        }
+        // --- UTILS ---
+        window.saveProject = function() {
+            // Salva apenas assets e managers.
+            // Os objetos da cena (cubos) são recriados pelo script ao carregar.
+            projectData.assets = fileSystem;
+            // projectData.sceneObjects já é mantido atualizado
+            localStorage.setItem('zetaProjectData', JSON.stringify(projectData));
+            log("Salvo.", "info");
+        };
+
+        window.toggleConsole = () => document.getElementById('console-panel').classList.toggle('open');
+        window.closeModal = () => document.getElementById('modal-options').style.display = 'none';
+        window.resetModal = () => { document.getElementById('input-area').style.display='none'; document.getElementById('default-actions').style.display='flex'; };
+
         function onWindowResize() {
             const vp = document.getElementById('viewport');
             if(vp.style.display === 'none') return;
@@ -543,7 +567,7 @@ if (this.cube && isPlaying) {
             const delta = clock.getDelta();
             const time = clock.getElapsedTime();
 
-            // Sempre chama o script, mas o script decide se anima com base no 'isPlaying'
+            // Sempre rodamos os scripts, mas o script verifica window.isPlaying internamente
             activeScripts.forEach(s => {
                 try { s.func.call(s.scope, time, delta); } catch(e){}
             });
