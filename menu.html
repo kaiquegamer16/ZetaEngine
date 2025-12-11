@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zeta Engine - Projetos</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #050505;
+            font-family: 'Orbitron', sans-serif;
+            color: white;
+        }
+
+        /* Header */
+        header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2rem;
+        }
+
+        .brand-icon {
+            width: 30px; height: 30px; 
+            border: 2px solid #00f3ff; 
+            color: #00f3ff; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0,243,255,0.2);
+        }
+
+        .version { 
+            font-size: 0.7rem; 
+            color: #ff0055; 
+            border: 1px solid #ff0055; 
+            padding: 2px 6px; 
+            border-radius: 4px; 
+        }
+
+        /* Container */
+        .container {
+            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Grid */
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        /* Card */
+        .project-card {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+
+        .project-card:hover {
+            border-color: #00f3ff;
+            transform: translateY(-3px);
+        }
+
+        .card-thumb {
+            height: 100px;
+            background: linear-gradient(135deg, #1a1a1a 25%, #222 25%, #222 50%, #1a1a1a 50%, #1a1a1a 75%, #222 75%, #222 100%);
+            background-size: 20px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #444;
+            font-size: 2rem;
+        }
+
+        .card-info {
+            padding: 10px;
+        }
+
+        .card-info h3 {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            font-size: 1rem;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-info p {
+            margin: 5px 0 0 0;
+            font-size: 0.7rem;
+            color: #666;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(0,0,0,0.5);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 25px; height: 25px;
+            cursor: pointer;
+            z-index: 2;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .delete-btn:hover { background: #ff0055; }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            color: #444;
+            margin-top: 100px;
+            display: none;
+        }
+
+        /* FAB Button */
+        .fab {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: #00f3ff;
+            border-radius: 50%;
+            border: none;
+            font-size: 2rem;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-box {
+            background: #151515;
+            padding: 25px;
+            border: 1px solid #00f3ff;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 350px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0,243,255,0.15);
+        }
+
+        .modal-box input {
+            width: 100%;
+            padding: 10px;
+            background: #000;
+            border: 1px solid #333;
+            color: white;
+            margin: 15px 0;
+            box-sizing: border-box;
+            outline: none;
+        }
+        .modal-box input:focus { border-color: #00f3ff; }
+
+        .modal-btns { display: flex; gap: 10px; justify-content: center; }
+        .btn { padding: 10px 20px; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .btn-create { background: #00f3ff; color: #000; }
+        .btn-cancel { background: #333; color: #fff; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <div class="brand-icon">Z</div>
+            <span>ZETA ENGINE</span>
+        </div>
+        <div class="version">BETA v0.1</div>
+    </header>
+
+    <div class="container">
+        <div id="project-list" class="project-grid"></div>
+
+        <div id="empty-view" class="empty-state">
+            <h2>Nenhum projeto</h2>
+            <p>Crie um novo projeto para começar</p>
+        </div>
+    </div>
+
+    <button class="fab" onclick="openModal()">+</button>
+
+    <div id="create-modal" class="modal">
+        <div class="modal-box">
+            <h3>Novo Projeto</h3>
+            <input type="text" id="proj-name" placeholder="Nome do Projeto..." maxlength="15">
+            <div class="modal-btns">
+                <button class="btn btn-cancel" onclick="closeModal()">Cancelar</button>
+                <button class="btn btn-create" onclick="createProject()">CRIAR</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elementos DOM
+        const projectList = document.getElementById('project-list');
+        const emptyView = document.getElementById('empty-view');
+        const modal = document.getElementById('create-modal');
+        const nameInput = document.getElementById('proj-name');
+
+        // 1. Carregar lista de projetos do LocalStorage
+        let projects = JSON.parse(localStorage.getItem('zetaProjects')) || [];
+
+        // 2. Renderizar a lista na tela
+        function render() {
+            projectList.innerHTML = '';
+            
+            if (projects.length === 0) {
+                emptyView.style.display = 'block';
+            } else {
+                emptyView.style.display = 'none';
+                
+                projects.forEach((p, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'project-card';
+                    
+                    // AÇÃO: Clicar no card abre o editor
+                    div.onclick = () => openEditor(index);
+                    
+                    div.innerHTML = `
+                        <button class="delete-btn" onclick="delProject(${index}, event)">×</button>
+                        <div class="card-thumb">3D</div>
+                        <div class="card-info">
+                            <h3>${p.name}</h3>
+                            <p>${p.date}</p>
+                        </div>
+                    `;
+                    projectList.appendChild(div);
+                });
+            }
+        }
+
+        // 3. Função para abrir o Editor
+        function openEditor(index) {
+            // Salva qual é o projeto atual para o Editor saber o que carregar
+            const currentProject = projects[index];
+            localStorage.setItem('zetaCurrentProject', JSON.stringify(currentProject));
+            
+            // Redireciona para o arquivo do editor
+            window.location.href = 'editor.html';
+        }
+
+        // 4. Criar novo projeto
+        function createProject() {
+            const name = nameInput.value.trim();
+            if(!name) return alert("Digite um nome!");
+
+            projects.push({
+                name: name,
+                date: new Date().toLocaleDateString('pt-BR'),
+                scenes: [] // Placeholder para dados futuros
+            });
+            
+            save();
+            render();
+            closeModal();
+            nameInput.value = '';
+        }
+
+        // 5. Deletar projeto
+        function delProject(index, e) {
+            e.stopPropagation(); // Impede que o clique no botão delete abra o editor
+            if(confirm("Apagar projeto permanentemente?")) {
+                projects.splice(index, 1);
+                save();
+                render();
+            }
+        }
+
+        // Funções auxiliares
+        function save() {
+            localStorage.setItem('zetaProjects', JSON.stringify(projects));
+        }
+
+        function openModal() { 
+            modal.style.display = 'flex'; 
+            nameInput.focus(); 
+        }
+        
+        function closeModal() { 
+            modal.style.display = 'none'; 
+        }
+
+        // Inicializar ao abrir a página
+        render();
+    </script>
+</body>
+</html>

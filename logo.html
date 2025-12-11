@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zeta Engine Beta - Splash</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #050505;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Orbitron', sans-serif;
+            overflow: hidden;
+            flex-direction: column;
+        }
+
+        .logo-box {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin-bottom: 20px;
+            transform-style: preserve-3d;
+            animation: floatAndSpin 4s ease-in-out infinite;
+        }
+
+        .logo-shape {
+            width: 100%;
+            height: 100%;
+            border: 4px solid #00f3ff;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 243, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .logo-text-z {
+            font-size: 80px;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 0 0 15px #00f3ff;
+        }
+
+        h1 {
+            color: #ffffff;
+            font-size: 2.5rem;
+            letter-spacing: 5px;
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        .zeta { color: #00f3ff; }
+
+        .loader-container {
+            width: 200px;
+            height: 4px;
+            background: #333;
+            margin-top: 30px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .loader-bar {
+            height: 100%;
+            background: #00f3ff;
+            width: 0%;
+            box-shadow: 0 0 10px #00f3ff;
+            animation: loadEngine 3.5s ease-in-out forwards;
+        }
+
+        @keyframes floatAndSpin {
+            0% { transform: translateY(0) rotateY(0deg); }
+            50% { transform: translateY(-10px) rotateY(180deg); }
+            100% { transform: translateY(0) rotateY(360deg); }
+        }
+
+        @keyframes loadEngine {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="logo-box">
+        <div class="logo-shape">
+            <div class="logo-text-z">Z</div>
+        </div>
+    </div>
+    <h1><span class="zeta">ZETA</span> ENGINE</h1>
+    <div class="loader-container">
+        <div class="loader-bar"></div>
+    </div>
+
+    <script>
+        // Redireciona para o menu após 4 segundos
+        setTimeout(() => {
+            window.location.href = 'menu.html';
+        }, 4000);
+    </script>
+</body>
+</html>
