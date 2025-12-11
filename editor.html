@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zeta Engine - Global Scripting</title>
+    <title>Zeta Engine - Live Editor</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400&display=swap');
 
-        /* --- CSS --- */
         * { box-sizing: border-box; user-select: none; outline: none; }
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -18,7 +17,6 @@
             display: flex; flex-direction: column;
         }
 
-        /* TOOLBAR */
         #toolbar {
             height: 50px; background: #111; border-bottom: 1px solid #333;
             display: flex; align-items: center; justify-content: space-between;
@@ -32,16 +30,12 @@
             transition: 0.2s; font-size: 1.2rem;
         }
         .tool-btn:hover { background: rgba(0, 243, 255, 0.1); color: #00f3ff; border-color: #00f3ff; }
-        .btn-play { color: #00f3ff; border-color: #00f3ff; }
-        .btn-stop { color: #ff0055; border-color: #ff0055; display: none; }
         .save-btn { font-size: 0.8rem; width: auto; padding: 0 15px; gap: 5px; font-family: 'Orbitron'; }
 
-        /* WORKSPACE */
         #workspace { flex: 1; display: flex; position: relative; overflow: hidden; }
         #viewport { flex: 1; background-color: #1a1a1a; position: relative; overflow: hidden; }
         canvas { display: block; width: 100%; height: 100%; }
 
-        /* EDITOR ACE */
         #code-editor-container {
             flex: 1; display: none; flex-direction: column;
             background: #141414; position: relative; z-index: 30;
@@ -52,7 +46,6 @@
             display: flex; align-items: center; justify-content: space-between; padding: 0 10px;
         }
 
-        /* SIDEBAR */
         #sidebar {
             width: 260px; background: #0f0f12; border-left: 1px solid #333;
             display: flex; flex-direction: column; z-index: 20;
@@ -64,7 +57,6 @@
         }
         .panel-content { padding: 10px; flex: 1; overflow-y: auto; font-family: 'Fira Code', monospace; font-size: 0.85rem;}
 
-        /* ARVORE */
         .tree-node { margin-left: 10px; }
         .tree-item {
             display: flex; align-items: center; padding: 4px 0;
@@ -75,14 +67,12 @@
             display: inline-block; width: 20px; text-align: center; font-size: 10px;
             cursor: pointer; transition: transform 0.2s; color: #666;
         }
-        .arrow:hover { color: #fff; }
         .arrow.open { transform: rotate(90deg); color: #00f3ff; }
         .arrow.hidden { visibility: hidden; }
         .icon { margin-right: 6px; }
         .folder-icon { color: #dcb67a; } .js-icon { color: #f7df1e; }
         .tree-children { display: none; border-left: 1px solid #333; margin-left: 9px; }
 
-        /* MODAL */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); z-index: 100; display: none;
@@ -101,7 +91,6 @@
         .modal-input { width: 100%; background: #000; border: 1px solid #444; color: #fff; padding: 8px; margin-bottom: 10px; }
         .btn-action { background: #00f3ff; color: #000; border: none; padding: 6px 12px; cursor: pointer; font-weight: bold; }
 
-        /* CONSOLE */
         #console-panel {
             position: absolute; bottom: 0; left: 0; width: 100%; height: 150px;
             background: rgba(0, 0, 0, 0.95); border-top: 1px solid #00f3ff;
@@ -131,7 +120,7 @@
         </div>
         <div class="toolbar-group">
             <button id="btn-play" class="tool-btn btn-play" onclick="startPlay()">▶</button>
-            <button id="btn-stop" class="tool-btn btn-stop" onclick="stopPlay()">⏹</button>
+            <button id="btn-stop" class="tool-btn btn-stop" style="display:none;" onclick="stopPlay()">⏹</button>
         </div>
         <div class="toolbar-group">
             <button class="tool-btn" onclick="toggleConsole()">💻</button>
@@ -196,7 +185,7 @@
         let scene, camera, renderer, controls, clock;
         let selectedObject3D = null;
         let isPlaying = false;
-        let activeScripts = [];
+        let activeScripts = []; // { scope: {}, func: Function }
         let editor;
         let activeScriptId = null;
 
@@ -205,35 +194,31 @@
         let selectedAsset = null;
         let creatingType = null;
 
-        // --- SCRIPT PADRÃO (SPAWNER) ---
         const SPAWNER_SCRIPT = `
-// Exemplo: Criar um Cubo e uma Luz
+// 1. Executa na inicialização (Editor e Play)
 if (!this.initialized) {
     this.initialized = true;
-    console.log("Iniciando cena...");
+    console.log("Inicializando objetos do script...");
 
-    // 1. Criar Cubo
+    // Cria cubo
     const geo = new THREE.BoxGeometry(1, 1, 1);
     const mat = new THREE.MeshStandardMaterial({ color: 0x00f3ff, roughness: 0.2 });
     this.cube = new THREE.Mesh(geo, mat);
     
-    // Borda
+    // Borda Neon
     const edges = new THREE.EdgesGeometry(geo);
     this.cube.add(new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff })));
     
-    // Adicionar à cena global
     scene.add(this.cube);
 
-    // 2. Criar Luz
+    // Luz
     const light = new THREE.DirectionalLight(0xffffff, 2);
     light.position.set(2, 5, 2);
     scene.add(light);
-    
-    console.log("Objetos criados!");
 }
 
-// Animação por frame
-if(this.cube) {
+// 2. Executa APENAS no Play Mode (Animação)
+if (this.cube && isPlaying) {
     this.cube.rotation.x += delta;
     this.cube.rotation.y += delta * 0.5;
 }
@@ -248,30 +233,26 @@ if(this.cube) {
             const vp = document.getElementById('viewport');
             clock = new THREE.Clock();
 
-            // CENA LIMPA
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x1a1a1a);
             
-            // EXPOR GLOBAIS PARA SCRIPTS
+            // EXPOR GLOBAIS
             window.scene = scene;
             window.THREE = THREE;
+            window.isPlaying = false; // Scripts podem ler essa variável
 
-            // Câmera
             const aspect = vp.clientWidth / vp.clientHeight;
             camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
             camera.position.set(0, 0, 5);
 
-            // Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(vp.clientWidth, vp.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             vp.appendChild(renderer.domElement);
 
-            // Controles
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
 
-            // Seleção
             const raycaster = new THREE.Raycaster();
             const mouse = new THREE.Vector2();
 
@@ -283,13 +264,12 @@ if(this.cube) {
                 
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObjects(scene.children);
-                
                 if (intersects.length > 0) selectObject(intersects[0].object);
                 else deselectObject();
             });
 
             window.addEventListener('resize', onWindowResize);
-            log("Zeta Engine v0.5 Ready.", "info");
+            log("Zeta Engine Pronta.", "info");
         }
 
         function initEditor() {
@@ -298,47 +278,73 @@ if(this.cube) {
             editor.session.setMode("ace/mode/javascript");
         }
 
-        // --- FUNÇÕES DE BOTÃO ---
-        window.saveProject = function() {
-            projectData.sceneObjects = [];
-            // Salva apenas objetos marcados como Managers (Gerenciadores de Script)
-            scene.children.forEach(child => {
-                if (child.userData.isManager) {
-                    projectData.sceneObjects.push({
-                        name: child.name,
-                        attachedScriptId: child.userData.attachedScriptId,
-                        isManager: true
-                    });
+        // --- SISTEMA CENTRAL ---
+
+        window.loadProject = function(isReload = false) {
+            // Limpa cena (exceto coisas nativas se houver, mas aqui limpamos tudo)
+            while(scene.children.length > 0){ scene.remove(scene.children[0]); }
+            activeScripts = [];
+
+            if(!isReload) {
+                try {
+                    const data = localStorage.getItem('zetaProjectData');
+                    if (data) {
+                        projectData = JSON.parse(data);
+                        fileSystem = projectData.assets || [];
+                    } else {
+                        // PADRÃO
+                        fileSystem = [{ id: 1, name: "Assets", type: "folder", children: [
+                            { id: 2, name: "StartScene.js", type: "js", content: SPAWNER_SCRIPT }
+                        ]}];
+                        projectData.sceneObjects = [{ name: 'System_StartScene', attachedScriptId: 2, isManager: true }];
+                    }
+                } catch (e) { localStorage.removeItem('zetaProjectData'); }
+            }
+
+            // 1. Recria os Managers e EXECUTAR OS SCRIPTS IMEDIATAMENTE (Modo Editor)
+            projectData.sceneObjects.forEach(d => {
+                if(d.isManager) {
+                    // Esfera amarela visual para o editor
+                    const geo = new THREE.SphereGeometry(0.2);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true });
+                    const manager = new THREE.Mesh(geo, mat);
+                    manager.name = d.name;
+                    manager.userData.isManager = true;
+                    manager.userData.attachedScriptId = d.attachedScriptId;
+                    scene.add(manager);
+
+                    // EXECUTA O SCRIPT AGORA (Para criar os objetos na cena)
+                    compileAndRunScript(d.attachedScriptId, manager);
                 }
             });
-            projectData.assets = fileSystem;
-            localStorage.setItem('zetaProjectData', JSON.stringify(projectData));
-            log("Projeto salvo!", "info");
-        };
+
+            renderTree();
+        }
+
+        function compileAndRunScript(scriptId, managerObj) {
+            const script = findItemById(fileSystem, scriptId);
+            if (script && script.content) {
+                try {
+                    const func = new Function('time', 'delta', script.content);
+                    const scriptScope = { initialized: false }; // Escopo persistente
+                    
+                    // Adiciona à lista de updates
+                    activeScripts.push({ scope: scriptScope, func: func, manager: managerObj });
+                    
+                    // Executa UMA VEZ para inicializar (criar meshes)
+                    func.call(scriptScope, 0, 0);
+                    
+                } catch (e) { log("Erro Script: " + e.message, "warn"); }
+            }
+        }
 
         window.startPlay = function() {
             if(isPlaying) return;
-            activeScripts = [];
+            window.isPlaying = true; // Scripts usam isso para saber se devem animar
 
-            // Compilar scripts dos objetos na cena (Managers)
-            scene.children.forEach(obj => {
-                if (obj.userData.attachedScriptId) {
-                    const script = findItemById(fileSystem, obj.userData.attachedScriptId);
-                    if (script && script.content) {
-                        try {
-                            const func = new Function('time', 'delta', script.content);
-                            // Cria um escopo vazio para o script guardar suas variáveis (this)
-                            const scriptScope = { initialized: false };
-                            activeScripts.push({ scope: scriptScope, func: func });
-                        } catch (e) { log("Erro Script: " + e.message, "warn"); }
-                    }
-                }
-            });
-
-            // Esconder os ícones dos managers durante o jogo
+            // Esconde os ícones amarelos dos managers
             scene.children.forEach(c => { if(c.userData.isManager) c.visible = false; });
 
-            isPlaying = true;
             document.getElementById('btn-play').style.display = 'none';
             document.getElementById('btn-stop').style.display = 'flex';
             document.getElementById('viewport').style.border = "2px solid #00f3ff";
@@ -348,18 +354,32 @@ if(this.cube) {
 
         window.stopPlay = function() {
             if(!isPlaying) return;
-            
-            // Limpa TUDO da cena
-            while(scene.children.length > 0){ scene.remove(scene.children[0]); }
-            
-            // Recarrega apenas o que foi salvo (Managers)
-            loadProject(true); 
+            window.isPlaying = false;
 
-            isPlaying = false;
+            // Recarrega o projeto para resetar posições e estados dos objetos
+            // Isso garante que voltamos exatamente para como estava no editor
+            window.loadProject(true); 
+
             document.getElementById('btn-play').style.display = 'flex';
             document.getElementById('btn-stop').style.display = 'none';
             document.getElementById('viewport').style.border = "none";
             log("Editor Mode.", "warn");
+        };
+
+        // --- ASSETS & UI ---
+        window.saveProject = function() {
+            // Salva apenas os Managers. Não salvamos os cubos criados dinamicamente.
+            projectData.sceneObjects = [];
+            scene.children.forEach(child => {
+                if (child.userData.isManager) {
+                    projectData.sceneObjects.push({
+                        name: child.name, attachedScriptId: child.userData.attachedScriptId, isManager: true
+                    });
+                }
+            });
+            projectData.assets = fileSystem;
+            localStorage.setItem('zetaProjectData', JSON.stringify(projectData));
+            log("Salvo com sucesso.", "info");
         };
 
         window.toggleConsole = () => document.getElementById('console-panel').classList.toggle('open');
@@ -439,7 +459,7 @@ if(this.cube) {
         };
 
         window.deleteItem = () => {
-            if(confirm("Deletar item?")) { deleteFromFolder(fileSystem, selectedAsset.id); renderTree(); window.closeModal(); window.saveProject(); }
+            if(confirm("Deletar?")) { deleteFromFolder(fileSystem, selectedAsset.id); renderTree(); window.closeModal(); window.saveProject(); }
         };
 
         window.openScriptEditor = () => {
@@ -460,69 +480,30 @@ if(this.cube) {
             document.getElementById('code-editor-container').style.display = 'none';
             onWindowResize();
             window.saveProject();
+            // Recarrega para ver as mudanças do código na hora
+            window.loadProject(true);
         };
 
-        // --- NOVA FUNÇÃO: APLICAR NA CENA ---
         window.applyScriptToScene = () => {
-            // Cria um objeto invisível para segurar o script
             const managerName = "System_" + selectedAsset.name.replace('.js', '');
-            
-            // Verifica se já existe para não duplicar
-            const exists = scene.children.find(c => c.name === managerName);
-            if(exists) {
-                alert("Este script já está aplicado na cena!");
-                window.closeModal();
-                return;
-            }
+            if(scene.children.find(c => c.name === managerName)) { alert("Já existe!"); return; }
 
-            // Cria o container do script (Visualização amarela no editor)
             const geo = new THREE.SphereGeometry(0.2);
             const mat = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true });
             const manager = new THREE.Mesh(geo, mat);
-            
             manager.name = managerName;
             manager.userData.isManager = true;
             manager.userData.attachedScriptId = selectedAsset.id;
             
             scene.add(manager);
-            
-            log(`Script '${selectedAsset.name}' aplicado globalmente.`, "info");
+            compileAndRunScript(selectedAsset.id, manager); // Roda imediatamente no editor
+
+            log(`Aplicado: ${selectedAsset.name}`, "info");
             window.closeModal();
             window.saveProject();
         };
 
-        // --- SISTEMA INTERNO ---
-        function loadProject(isReload = false) {
-            if(!isReload) {
-                try {
-                    const data = localStorage.getItem('zetaProjectData');
-                    if (data) {
-                        projectData = JSON.parse(data);
-                        fileSystem = projectData.assets || [];
-                    } else {
-                        fileSystem = [{ id: 1, name: "Assets", type: "folder", children: [
-                            { id: 2, name: "StartScene.js", type: "js", content: SPAWNER_SCRIPT }
-                        ]}];
-                        projectData.sceneObjects = [{ name: 'System_StartScene', attachedScriptId: 2, isManager: true }];
-                    }
-                } catch (e) { localStorage.removeItem('zetaProjectData'); }
-            }
-
-            // Recriar Managers
-            projectData.sceneObjects.forEach(d => {
-                if(d.isManager) {
-                    const geo = new THREE.SphereGeometry(0.2);
-                    const mat = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true });
-                    const manager = new THREE.Mesh(geo, mat);
-                    manager.name = d.name;
-                    manager.userData.isManager = true;
-                    manager.userData.attachedScriptId = d.attachedScriptId;
-                    scene.add(manager);
-                }
-            });
-            renderTree();
-        }
-
+        // Helpers
         function findItemById(list, id) {
             for(let i of list) { if(i.id === id) return i; if(i.children) { const f = findItemById(i.children, id); if(f) return f; } } return null;
         }
@@ -532,11 +513,9 @@ if(this.cube) {
         }
         function selectObject(obj) {
             if(obj.userData.isManager) {
-                // Seleção de Managers
                 if(selectedObject3D) selectedObject3D.material.color.setHex(0xffff00);
                 selectedObject3D = obj;
                 selectedObject3D.material.color.setHex(0xffaa00);
-                log("Sistema Selecionado: " + obj.name, "info");
             }
         }
         function deselectObject() {
@@ -564,13 +543,12 @@ if(this.cube) {
             const delta = clock.getDelta();
             const time = clock.getElapsedTime();
 
-            if (isPlaying) {
-                activeScripts.forEach(s => {
-                    try { s.func.call(s.scope, time, delta); } catch(e){}
-                });
-            } else {
-                controls.update();
-            }
+            // Sempre chama o script, mas o script decide se anima com base no 'isPlaying'
+            activeScripts.forEach(s => {
+                try { s.func.call(s.scope, time, delta); } catch(e){}
+            });
+
+            if(!isPlaying) controls.update();
             renderer.render(scene, camera);
         }
     </script>
